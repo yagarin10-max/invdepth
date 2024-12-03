@@ -100,8 +100,10 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
             [0, 0, 1]
         ])
         
-        # 回転の合成（順序：Z → Y → X）
-        R = Rx @ Ry @ Rz
+        # # 回転の合成（順序：Z → Y → X）
+        # R = Rx @ Ry @ Rz
+        # blenderの回転の合成（順序：X → Z → Y）
+        R = Ry @ Rz @ Rx
         return R
 
     def load_camera_params(self) -> Dict[str, Any]:
@@ -190,6 +192,92 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
             )
         
         return image
+    
+    def compute_relative_transform(self, source_transform: np.ndarray, target_transform: np.ndarray) -> np.ndarray:
+        """
+        ソース視点からターゲット視点への相対的な変換行列を計算（カメラ座標系でのX方向の移動のみを考慮）
+        Args:
+            source_transform: ソースカメラの変換行列 (4x4)
+            target_transform: ターゲットカメラの変換行列 (4x4)
+        Returns:
+            relative_transform: X方向の移動のみを含む相対変換行列 (4x4)
+        """
+        # 1. 両カメラの世界座標系での位置を取得
+        source_position = source_transform[:3, 3]
+        target_position = target_transform[:3, 3]
+        
+        # 2. 世界座標系での位置の差分を計算
+        world_displacement = target_position - source_position
+        
+        # 3. ソースカメラの回転行列（カメラの向き）を取得
+        source_rotation = source_transform[:3, :3]
+        
+        # 4. 差分ベクトルをソースカメラの座標系に変換
+        # 回転行列の転置を掛けることで、世界座標系→カメラ座標系の変換を行う
+        camera_space_displacement = source_rotation.T @ world_displacement
+        
+        # 5. X方向の移動のみを含む相対変換行列を構築
+        relative_transform = np.eye(4)
+        relative_transform[0, 3] = -camera_space_displacement[0]  # X方向の移動のみを使用
+        
+        return relative_transform
+
+    def verify_rotation_matrix(self, euler_angles: List[float]) -> None:
+        """
+        回転行列の検証用関数
+        Args:
+            euler_angles: [rx, ry, rz] 形式のオイラー角（度）
+        """
+        R = self._euler_to_rotation_matrix(euler_angles)
+        
+        # 行列が正規直交行列かチェック
+        RRT = R @ R.T
+        I = np.eye(3)
+        is_orthogonal = np.allclose(RRT, I, atol=1e-6)
+        
+        # 行列式が1かチェック（右手系の保存）
+        det = np.linalg.det(R)
+        is_proper = np.isclose(det, 1.0, atol=1e-6)
+        
+        print(f"Rotation matrix for angles {euler_angles}:")
+        print(R)
+        print(f"Is orthogonal: {is_orthogonal}")
+        print(f"Is proper (det=1): {is_proper}")
+        print(f"Determinant: {det}")
+
+    def verify_camera_motion(self, transform1: np.ndarray, transform2: np.ndarray) -> Dict[str, float]:
+        """
+        2つのカメラ位置間の移動を検証
+        Args:
+            transform1: 1つ目のカメラの変換行列
+            transform2: 2つ目のカメラの変換行列
+        Returns:
+            motion_info: カメラの移動に関する情報を含む辞書
+        """
+        # 相対変換を計算
+        relative = self.compute_relative_transform(transform1, transform2)
+        
+        # 並進ベクトルを抽出
+        translation = relative[:3, 3]
+        
+        # 回転行列を抽出
+        rotation = relative[:3, :3]
+        
+        # オイラー角に変換（度数）
+        euler_angles = np.array([
+            np.arctan2(rotation[2, 1], rotation[2, 2]),
+            np.arctan2(-rotation[2, 0], np.sqrt(rotation[2, 1]**2 + rotation[2, 2]**2)),
+            np.arctan2(rotation[1, 0], rotation[0, 0])
+        ]) * 180 / np.pi
+        
+        return {
+            'translation_x': float(translation[0]),
+            'translation_y': float(translation[1]),
+            'translation_z': float(translation[2]),
+            'rotation_x': float(euler_angles[0]),
+            'rotation_y': float(euler_angles[1]),
+            'rotation_z': float(euler_angles[2])
+        }
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         """
@@ -203,6 +291,7 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
                 - src_images: ソース画像のリスト (N, 3, H, W)
                 - ref_transform: 参照画像の変換行列 (4, 4)
                 - src_transforms: ソース画像の変換行列のリスト (N, 4, 4)
+                - relative_transforms: 参照視点からソース視点への相対変換行列のリスト (N, 4, 4)
                 - K: カメラ内部パラメータ行列 (3, 3)
         """
         scene = self.scenes[idx]
@@ -217,13 +306,23 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
         # ソース画像とその変換行列の読み込み
         src_images = []
         src_transforms = []
+        relative_transforms = []  # 相対変換行列のリストを追加
+        ref_transform = self.camera_params[ref_image_name]['transform']  # 参照視点の変換行列
         
         for src_img_name in scene['source_images']:
+            # ソース画像の読み込みと変換
             src_image = self.load_image(self.data_root / 'images' / src_img_name)
             if self.transform:
                 src_image = self.transform(src_image)
             src_images.append(src_image)
-            src_transforms.append(self.camera_params[src_img_name]['transform'])
+            
+            # 変換行列の取得と相対変換の計算
+            src_transform = self.camera_params[src_img_name]['transform']
+            src_transforms.append(src_transform)
+            
+            # 相対変換行列の計算 (参照視点 → ソース視点)
+            relative_transform = self.compute_relative_transform(ref_transform, src_transform)
+            relative_transforms.append(relative_transform)
         
         # 参照画像の変換
         if self.transform:
@@ -237,16 +336,17 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
                 torch.from_numpy(img).float().permute(2, 0, 1) / 255.0 
                 for img in src_images
             ]),
-            'ref_transform': torch.from_numpy(
-                self.camera_params[ref_image_name]['transform']
-            ).float(),
+            'ref_transform': torch.from_numpy(ref_transform).float(),
             'src_transforms': torch.stack([
                 torch.from_numpy(transform).float() 
                 for transform in src_transforms
             ]),
+            'relative_transforms': torch.stack([  # 相対変換行列を追加
+                torch.from_numpy(transform).float() 
+                for transform in relative_transforms
+            ]),
             'K': torch.from_numpy(self.K).float()
         }
-        
         return data
 
 # 使用例
@@ -293,7 +393,13 @@ if __name__ == "__main__":
         print("Reference image:", dataset.scenes[0]['reference_image'])
         print("Source images:", dataset.scenes[0]['source_images'])
         print("Depth file:", dataset.scenes[0]['depth_file'])
-        
+        motion_info = dataset.verify_camera_motion(
+            sample['ref_transform'].numpy(),
+            sample['src_transforms'][0].numpy()
+        )
+        print("Camera motion:", motion_info)
+        print('relative transform:', sample['relative_transforms'])
+
     except Exception as e:
         print(f"Error initializing dataset: {str(e)}")
         raise
