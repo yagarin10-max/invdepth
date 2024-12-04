@@ -7,8 +7,8 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import skimage.metrics
 import os
-
-from utils.camera import get_camera_matrices, compute_relative_transform
+from matplotlib import pyplot as plt
+from utils.camera import compute_relative_transform
 from utils.warp import warp_with_inverse_depth_mesh, compute_loss
 from utils.metrics import TVLoss
 from models.siren import SIREN
@@ -71,7 +71,7 @@ class InverseDepthTrainer:
             K = batch['K'].to(self.device)
             ref_transform = batch['ref_transform'].to(self.device)
             src_transforms = batch['src_transforms'].to(self.device)
-
+            # print(src_transforms)
             b, c, h, w = ref_image.shape
 
             # 座標グリッドの生成
@@ -105,7 +105,6 @@ class InverseDepthTrainer:
                     K,
                     RT_ref_to_src
                 )
-                
                 recon_loss = compute_loss(
                     pred_img,
                     src_images[:, i],
@@ -143,11 +142,14 @@ class InverseDepthTrainer:
         os.makedirs(self.config['save_dir'], exist_ok=True)
 
         best_psnr = 0
+        psnr_history = []
         for epoch in range(self.config['num_epochs']):
             loss, psnr = self.train_epoch(
                 use_patch_loss=self.config['use_patch_loss'],
                 patch_size=self.config['patch_size']
             )
+
+            psnr_history.append(psnr)
             
             print(f'Epoch {epoch + 1}/{self.config["num_epochs"]}')
             print(f'Loss: {loss:.4f}, PSNR: {psnr:.2f}')
@@ -159,6 +161,14 @@ class InverseDepthTrainer:
                     self.net.state_dict(),
                     f"{self.config['save_dir']}/best_model.pth"
                 )
+        plt.figure(figsize=(10,5))
+        plt.plot(psnr_history, label='PSNR')
+        plt.xlabel('Epoch')
+        plt.ylabel('PSNR')
+        plt.legend()
+        plt.savefig(f"{self.config['results_dir']}/psnr_history.png")
+        plt.close()
+
 
 if __name__ == "__main__":
     # 設定
