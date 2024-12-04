@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Union, Optional
 import math
 from .base_dataset import BaseMultiViewDataset
+from pytorch3d.renderer import PerspectiveCameras
 
 class MultiViewDepthDataset(BaseMultiViewDataset):
     def __init__(
@@ -47,19 +48,30 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
         self.sensor_width_mm = sensor_width_mm
         self.z_min = z_min
         self.z_max = z_max
-        
+
+        self.focal_px = (self.img_width * self.focal_mm) / self.sensor_width_mm
+        self.principal_point = (self.img_width / 2, self.img_height / 2)
+
         # 内部・外部パラメータの設定
         self.K = self._compute_intrinsic_matrix()
         self.camera_params = self.load_camera_params()
 
     def _compute_intrinsic_matrix(self) -> np.ndarray:
         """カメラの内部パラメータ行列を計算"""
-        focal_px = (self.img_width * self.focal_mm) / self.sensor_width_mm
-        cam_int = np.array([
-            [focal_px/ self.img_width, 0, 0.5],
-            [0, focal_px/ self.img_width, 0.5],
+        # NDC変換
+        s = min(self.img_height, self.img_width)
+        fx_ndc = self.focal_px * 2.0 / s
+        # NDCでの内部パラメータ行列
+        cam_int = torch.tensor([
+            [fx_ndc, 0, 0],
+            [0, fx_ndc, 0],
             [0, 0, 1]
         ])
+        # cam_int = np.array([
+        #     [focal_px/ self.img_width, 0, 0.5],
+        #     [0, focal_px/ self.img_width, 0.5],
+        #     [0, 0, 1]
+        # ])
         # cam_int = np.array([
         #     [focal_px, 0, self.img_width/2],
         #     [0, focal_px, self.img_height/2],
@@ -202,6 +214,7 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
         Returns:
             relative_transform: X方向の移動のみを含む相対変換行列 (4x4)
         """
+
         # 1. 両カメラの世界座標系での位置を取得
         source_position = source_transform[:3, 3]
         target_position = target_transform[:3, 3]
@@ -211,6 +224,7 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
         
         # 3. ソースカメラの回転行列（カメラの向き）を取得
         source_rotation = source_transform[:3, :3]
+        # source_rotation = blender_to_pytorch3d @ source_transform[:3, :3]
         
         # 4. 差分ベクトルをソースカメラの座標系に変換
         # 回転行列の転置を掛けることで、世界座標系→カメラ座標系の変換を行う
@@ -218,6 +232,7 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
         
         # 5. X方向の移動のみを含む相対変換行列を構築
         relative_transform = np.eye(4)
+        # Blender to Pytorch3d -> the minus sign 
         relative_transform[0, 3] = -camera_space_displacement[0]  # X方向の移動のみを使用
         
         return relative_transform
@@ -345,7 +360,7 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
                 torch.from_numpy(transform).float() 
                 for transform in relative_transforms
             ]),
-            'K': torch.from_numpy(self.K).float()
+            'K': self.K.clone()# torch.from_numpy(self.K).float()
         }
         return data
 
@@ -376,7 +391,7 @@ if __name__ == "__main__":
     try:
         dataset = MultiViewDepthDataset(
             data_root=data_root,
-            num_source_views=4,  # より安全な値に設定
+            num_source_views=2,  # より安全な値に設定
             img_height=256,
             img_width=256,
             focal_mm=55,
@@ -399,6 +414,7 @@ if __name__ == "__main__":
         )
         print("Camera motion:", motion_info)
         print('relative transform:', sample['relative_transforms'])
+        print('K:', sample['K'])
 
     except Exception as e:
         print(f"Error initializing dataset: {str(e)}")
