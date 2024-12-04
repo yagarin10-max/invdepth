@@ -21,6 +21,7 @@ def visualize_results(trainer, save_dir='results'):
         K = data['K'].to(trainer.device)
         ref_transform = data['ref_transform'].to(trainer.device)
         src_transforms = data['src_transforms'].to(trainer.device)
+        relative_transforms = data['relative_transforms'].to(trainer.device)
         print(K)
         b, c, h, w = ref_image.shape
 
@@ -58,46 +59,56 @@ def visualize_results(trainer, save_dir='results'):
         plt.close()
 
         # 3. ワーピング結果の可視化
-        num_views_to_show = min(3, src_images.size(1))
-        plt.figure(figsize=(15, 5))
-        for i in range(num_views_to_show):
-            RT_ref_to_src = compute_relative_transform(
-                ref_transform,
-                src_transforms[:, i]
-            )[:,:3,:]
-
-            print(RT_ref_to_src)
+        num_source_views = src_images.size(1)
+        plt.figure(figsize=(20, 5 * num_source_views))
+        
+        for i in range(num_source_views):
+            # RT_ref_to_src = compute_relative_transform(
+            #     ref_transform,
+            #     relative_transforms[:, i]
+            # )[:,:3,:]
+            print(relative_transforms[:, i])
             pred_img, mask = warp_with_inverse_depth_mesh(
                 ref_image,
                 pred_inverse_depth,
                 trainer.device,
                 K,
-                RT_ref_to_src
+                relative_transforms[:, i][:,:3,:]
             )
 
-            plt.subplot(1, 3, i+1)
-            display_img = pred_img[0].permute(1, 2, 0).cpu().numpy()
-            display_img = np.clip(display_img, 0, 1)  # クリッピング追加
-            
-            if i == 0:
-                src_img_display = src_images[0, i].permute(1, 2, 0).cpu().numpy()
-                src_img_display = np.clip(src_img_display, 0, 1)  # クリッピング追加
-                plt.imshow(src_img_display)
-                plt.title('Source Image')
-            else:
-                plt.imshow(display_img)
-                plt.title(f'Warped Image {i}')
+            # 真値（ソース画像）の表示
+            plt.subplot(num_source_views, 4, 4*i + 1)
+            src_img_display = src_images[0, i].permute(1, 2, 0).cpu().numpy()
+            src_img_display = np.clip(src_img_display, 0, 1)
+            plt.imshow(src_img_display)
+            plt.title(f'Source View {i+1} (Ground Truth)')
             plt.axis('off')
-            # plt.subplot(1, 3, i+1)
-            # if i == 0:
-            #     plt.imshow(src_images[0, i].permute(1, 2, 0).cpu().numpy())
-            #     plt.title('Source Image')
-            # else:
-            #     plt.imshow(pred_img[0].permute(1, 2, 0).cpu().numpy())
-            #     plt.title(f'Warped Image {i}')
-            # plt.axis('off')
-        
-        plt.savefig(os.path.join(save_dir, 'warping_results.png'))
+
+            # ワーピング結果の表示
+            plt.subplot(num_source_views, 4, 4*i + 2)
+            warped_img_display = pred_img[0].permute(1, 2, 0).cpu().numpy()
+            warped_img_display = np.clip(warped_img_display, 0, 1)
+            plt.imshow(warped_img_display)
+            plt.title(f'Source View {i+1} (Warped)')
+            plt.axis('off')
+
+            plt.subplot(num_source_views, 4, 4*i + 3)
+            mask_display = mask[0, 0].cpu().numpy()
+            plt.imshow(mask_display, cmap='gray')
+            plt.colorbar()
+            plt.title(f'Visibility Mask {i+1}')
+            plt.axis('off')
+
+            # 差分の表示
+            plt.subplot(num_source_views, 4, 4*i + 4)
+            diff = np.abs(src_img_display - warped_img_display)
+            plt.imshow(diff)
+            plt.colorbar()
+            plt.title('Absolute Difference')
+            plt.axis('off')
+
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_dir, 'warping_comparison_with_masks.png'))
         plt.close()
 
 def main():
@@ -107,7 +118,7 @@ def main():
         'hidden_dim': 256,
         'hidden_layers': 2,
         'learning_rate': 1e-4,
-        'num_epochs': 300,  # テスト用に少なめのエポック数
+        'num_epochs': 3000,  # テスト用に少なめのエポック数
         'batch_size': 1,
         'num_workers': 0,  # デバッグ時は0にする
         'num_source_views': 3,
