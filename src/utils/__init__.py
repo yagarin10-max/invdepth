@@ -1,7 +1,6 @@
 # utils/__init__.py
 
 from .camera import (
-    get_camera_matrices,
     compute_relative_transform,
     get_perspective_from_intrinsic
 )

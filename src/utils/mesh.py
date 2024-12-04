@@ -36,7 +36,7 @@ def construct_mesh(
     invdepth: torch.Tensor, 
     cam_int: torch.Tensor,
     device: torch.device,
-    eps: float = 1e-6
+    eps: float = 1e-3
 ) -> Dict[str, torch.Tensor]:
     """メッシュを構築
     

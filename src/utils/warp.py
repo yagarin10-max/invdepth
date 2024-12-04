@@ -103,11 +103,12 @@ def pixel_wise_loss(pred: torch.Tensor, target: torch.Tensor, mask: torch.Tensor
         
     Returns:
         loss: ピクセルごとのロス値
-    """
+    # """
     pixel_losses = torch.abs(pred - target)
     total_loss = (pixel_losses * mask).sum()
     num_valid_pixels = mask.sum() + 1e-6
     return total_loss / num_valid_pixels
+    # return torch.abs(pred - target)
 
 def compute_loss(
     pred: torch.Tensor,

@@ -14,8 +14,8 @@ def render_mesh(
     cam_ext: torch.Tensor, 
     device: torch.device,
     eps: float = 1e-3,
-    near: float = 1e-4,
-    far: float = 1000
+    near: float = 0.1,
+    far: float = 10
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """メッシュをレンダリング
     
@@ -38,6 +38,11 @@ def render_mesh(
     attributes = mesh_dict["attributes"]
     h, w = mesh_dict["size"]
 
+    # print("変換前の頂点座標範囲:")
+    # print(f"X: [{vertice[..., 0].min():.4f}, {vertice[..., 0].max():.4f}]")
+    # print(f"Y: [{vertice[..., 1].min():.4f}, {vertice[..., 1].max():.4f}]")
+    # print(f"Z: [{vertice[..., 2].min():.4f}, {vertice[..., 2].max():.4f}]")
+
     # NDC空間への変換
     vertice_homo = lift_to_homo(vertice)
     vertice_world = torch.matmul(
@@ -48,6 +53,11 @@ def render_mesh(
     vertice_depth = vertice_world[..., -1:]
     attributes = torch.cat([attributes, vertice_depth], dim=-1)
     
+    # print("\nカメラ空間での座標範囲:")
+    # print(f"X: [{vertice_world[..., 0].min():.4f}, {vertice_world[..., 0].max():.4f}]")
+    # print(f"Y: [{vertice_world[..., 1].min():.4f}, {vertice_world[..., 1].max():.4f}]")
+    # print(f"Z: [{vertice_world[..., 2].min():.4f}, {vertice_world[..., 2].max():.4f}]")
+
     vertice_world_homo = lift_to_homo(vertice_world)
     persp = get_perspective_from_intrinsic(cam_int, near, far)
     vertice_ndc = torch.matmul(
@@ -58,6 +68,12 @@ def render_mesh(
     vertice_ndc = vertice_ndc[..., :-1] / vertice_ndc[..., -1:]
     vertice_ndc[..., :-1] *= -1
     vertice_ndc[..., 0] *= w / h
+
+    # print("\nNDC空間での座標範囲:")
+    # print(f"X: [{vertice_ndc[..., 0].min():.4f}, {vertice_ndc[..., 0].max():.4f}]")
+    # print(f"Y: [{vertice_ndc[..., 1].min():.4f}, {vertice_ndc[..., 1].max():.4f}]")
+    # print(f"Z: [{vertice_ndc[..., 2].min():.4f}, {vertice_ndc[..., 2].max():.4f}]")
+
     # レンダリング
     mesh = Meshes(vertice_ndc, faces)
     pix_to_face, _, bary_coords, _ = rasterize_meshes(
