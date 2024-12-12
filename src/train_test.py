@@ -38,6 +38,7 @@ def visualize_results(trainer, save_dir='results'):
 
         # 逆深度の予測
         pred_inverse_depth = trainer.net(coords)
+        pred_inverse_depth = torch.clamp(pred_inverse_depth, -1, 1)
         pred_inverse_depth = pred_inverse_depth.reshape(b, 1, h, w)
         pred_inverse_depth = (pred_inverse_depth + 1) / 2.0
 
@@ -68,7 +69,7 @@ def visualize_results(trainer, save_dir='results'):
             #     relative_transforms[:, i]
             # )[:,:3,:]
             print(relative_transforms[:, i])
-            pred_img, mask = warp_with_inverse_depth_mesh(
+            pred_img, warp_inv, mask = warp_with_inverse_depth_mesh(
                 ref_image,
                 pred_inverse_depth,
                 trainer.device,
@@ -100,12 +101,19 @@ def visualize_results(trainer, save_dir='results'):
             plt.axis('off')
 
             # 差分の表示
+            mask_display_3ch = np.expand_dims(mask_display, axis=2).repeat(3, axis=2)
             plt.subplot(num_source_views, 4, 4*i + 4)
             diff = np.abs(src_img_display - warped_img_display)
-            plt.imshow(diff)
+            plt.imshow(diff*mask_display_3ch)
             plt.colorbar()
             plt.title('Absolute Difference')
             plt.axis('off')
+
+            # plt.subplot(num_source_views, 4, 4*i + 4)
+            # plt.imshow((mask[0, 0]*warp_inv[0, 0]).cpu().numpy(), cmap='plasma')
+            # plt.colorbar()
+            # plt.title('Warped Inverse Depth Map')
+            # plt.axis('off')
 
         plt.tight_layout()
         plt.savefig(os.path.join(save_dir, 'warping_comparison_with_masks.png'))
@@ -118,7 +126,7 @@ def main():
         'hidden_dim': 256,
         'hidden_layers': 2,
         'learning_rate': 1e-4,
-        'num_epochs': 3000,  # テスト用に少なめのエポック数
+        'num_epochs': 500,  # テスト用に少なめのエポック数
         'batch_size': 1,
         'num_workers': 0,  # デバッグ時は0にする
         'num_source_views': 3,

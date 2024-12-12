@@ -69,8 +69,8 @@ class InverseDepthTrainer:
             ref_image = batch['ref_image'].to(self.device)
             src_images = batch['src_images'].to(self.device)
             K = batch['K'].to(self.device)
-            ref_transform = batch['ref_transform'].to(self.device)
-            src_transforms = batch['src_transforms'].to(self.device)
+            ref_depth = batch['ref_depth'].to(self.device)
+            relative_transforms = batch['relative_transforms'].to(self.device)
             # print(src_transforms)
             b, c, h, w = ref_image.shape
 
@@ -87,23 +87,19 @@ class InverseDepthTrainer:
 
             # 逆深度の予測
             pred_inverse_depth = self.net(coords)
+            pred_inverse_depth = torch.clamp(pred_inverse_depth, -1, 1)
             pred_inverse_depth = pred_inverse_depth.reshape(b, 1, h, w)
             pred_inverse_depth = (pred_inverse_depth + 1) / 2.0  # 0~1に正規化
 
             # マルチビューの再構成損失の計算
             total_recon_loss = 0
             for i in range(src_images.size(1)):  # ソース画像の数だけループ
-                RT_ref_to_src = compute_relative_transform(
-                    ref_transform,
-                    src_transforms[:, i]
-                )[:,:3,:]
-                
-                pred_img, mask = warp_with_inverse_depth_mesh(
+                pred_img, warp_inv, mask = warp_with_inverse_depth_mesh(
                     ref_image,
                     pred_inverse_depth,
                     self.device,
                     K,
-                    RT_ref_to_src
+                    relative_transforms[:, i][:,:3,:]
                 )
                 recon_loss = compute_loss(
                     pred_img,
@@ -143,6 +139,7 @@ class InverseDepthTrainer:
 
         best_psnr = 0
         psnr_history = []
+        loss_history = []
         for epoch in range(self.config['num_epochs']):
             loss, psnr = self.train_epoch(
                 use_patch_loss=self.config['use_patch_loss'],
@@ -150,6 +147,7 @@ class InverseDepthTrainer:
             )
 
             psnr_history.append(psnr)
+            loss_history.append(loss)
             
             print(f'Epoch {epoch + 1}/{self.config["num_epochs"]}')
             print(f'Loss: {loss:.4f}, PSNR: {psnr:.2f}')
@@ -161,6 +159,13 @@ class InverseDepthTrainer:
                     self.net.state_dict(),
                     f"{self.config['save_dir']}/best_model.pth"
                 )
+        plt.figure(figsize=(10,5))
+        plt.plot(loss_history, label='Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.savefig(f"{self.config['results_dir']}/loss_history.png")
+        plt.close()
         plt.figure(figsize=(10,5))
         plt.plot(psnr_history, label='PSNR')
         plt.xlabel('Epoch')
@@ -180,7 +185,7 @@ if __name__ == "__main__":
         'num_epochs': 3000,
         'batch_size': 1,
         'num_workers': 4,
-        'num_source_views': 5,
+        'num_source_views': 3,
         'img_height': 256,
         'img_width': 256,
         'focal_length_mm': 55,
