@@ -19,8 +19,6 @@ def visualize_results(trainer, save_dir='results'):
         ref_image = data['ref_image'].to(trainer.device)
         src_images = data['src_images'].to(trainer.device)
         K = data['K'].to(trainer.device)
-        ref_transform = data['ref_transform'].to(trainer.device)
-        src_transforms = data['src_transforms'].to(trainer.device)
         relative_transforms = data['relative_transforms'].to(trainer.device)
         print(K)
         b, c, h, w = ref_image.shape
@@ -64,10 +62,6 @@ def visualize_results(trainer, save_dir='results'):
         plt.figure(figsize=(20, 5 * num_source_views))
         
         for i in range(num_source_views):
-            # RT_ref_to_src = compute_relative_transform(
-            #     ref_transform,
-            #     relative_transforms[:, i]
-            # )[:,:3,:]
             print(relative_transforms[:, i])
             pred_img, warp_inv, mask = warp_with_inverse_depth_mesh(
                 ref_image,
