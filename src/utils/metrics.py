@@ -12,6 +12,27 @@ class TVLoss(nn.Module):
         w_tv = ((output[:,:,:,1:] - output[:,:,:,:-1]).pow(2)).sum()
         return h_tv + w_tv
 
+class TGVLoss(nn.Module):
+    def __init__(self, alpha0=1.0, alpha1=2.0):
+        super(TGVLoss, self).__init__()
+        self.alpha0 = alpha0  # 1次微分の重み
+        self.alpha1 = alpha1  # 2次微分の重み
+
+    def forward(self, x):
+        # 1次微分
+        dx = x[..., :, 1:] - x[..., :, :-1]
+        dy = x[..., 1:, :] - x[..., :-1, :]
+
+        # 2次微分
+        dxx = dx[..., :, 1:] - dx[..., :, :-1]
+        dyy = dy[..., 1:, :] - dy[..., :-1, :]
+        dxy = dx[..., 1:, :] - dx[..., :-1, :]
+
+        # TGVの計算
+        v1 = self.alpha0 * (torch.sum(dx.pow(2)) + torch.sum(dy.pow(2)))
+        v2 = self.alpha1 * (torch.sum(dxx.pow(2)) + torch.sum(dyy.pow(2)) + torch.sum(dxy.pow(2)))
+
+        return v1 + v2
 
 class EdgeLoss(nn.Module):
     def __init__(self):
