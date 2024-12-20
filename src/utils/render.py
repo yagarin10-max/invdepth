@@ -13,7 +13,7 @@ def render_mesh(
     cam_int: torch.Tensor, 
     cam_ext: torch.Tensor, 
     device: torch.device,
-    eps: float = 1e-3,
+    eps: float = 1e-1,
     near: float = 0.1,
     far: float = 10
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -38,11 +38,6 @@ def render_mesh(
     attributes = mesh_dict["attributes"]
     h, w = mesh_dict["size"]
 
-    # print("変換前の頂点座標範囲:")
-    # print(f"X: [{vertice[..., 0].min():.4f}, {vertice[..., 0].max():.4f}]")
-    # print(f"Y: [{vertice[..., 1].min():.4f}, {vertice[..., 1].max():.4f}]")
-    # print(f"Z: [{vertice[..., 2].min():.4f}, {vertice[..., 2].max():.4f}]")
-
     # NDC空間への変換
     vertice_homo = lift_to_homo(vertice)
     vertice_world = torch.matmul(
@@ -53,11 +48,6 @@ def render_mesh(
     vertice_depth = vertice_world[..., -1:]
     attributes = torch.cat([attributes, vertice_depth], dim=-1)
     
-    # print("\nカメラ空間での座標範囲:")
-    # print(f"X: [{vertice_world[..., 0].min():.4f}, {vertice_world[..., 0].max():.4f}]")
-    # print(f"Y: [{vertice_world[..., 1].min():.4f}, {vertice_world[..., 1].max():.4f}]")
-    # print(f"Z: [{vertice_world[..., 2].min():.4f}, {vertice_world[..., 2].max():.4f}]")
-
     vertice_world_homo = lift_to_homo(vertice_world)
     persp = get_perspective_from_intrinsic(cam_int, near, far)
     vertice_ndc = torch.matmul(
@@ -69,30 +59,19 @@ def render_mesh(
     vertice_ndc[..., :-1] *= -1
     vertice_ndc[..., 0] *= w / h
 
-    # print("\nNDC空間での座標範囲:")
-    # print(f"X: [{vertice_ndc[..., 0].min():.4f}, {vertice_ndc[..., 0].max():.4f}]")
-    # print(f"Y: [{vertice_ndc[..., 1].min():.4f}, {vertice_ndc[..., 1].max():.4f}]")
-    # print(f"Z: [{vertice_ndc[..., 2].min():.4f}, {vertice_ndc[..., 2].max():.4f}]")
-
     # レンダリング
     mesh = Meshes(vertice_ndc, faces)
-    pix_to_face, _, bary_coords, _ = rasterize_meshes(
-        mesh, 
-        (h, w), 
-        faces_per_pixel=1, 
-        blur_radius=1e-6
-    )
+    pix_to_face, _, bary_coords, _ = rasterize_meshes(mesh, (h, w), faces_per_pixel=1, blur_radius=1e-6)
 
     b, nf, _ = faces.size()
     faces = faces.reshape(b, nf * 3, 1).repeat(1, 1, 5)
     face_attributes = torch.gather(attributes, dim=1, index=faces)
     face_attributes = face_attributes.reshape(b * nf, 3, 5)
-    
     output = interpolate_face_attributes(pix_to_face, bary_coords, face_attributes)
     output = output.squeeze(-2).permute(0, 3, 1, 2)
 
-    render = output[:, :3]
-    mask = output[:, 3:4]
+    render = torch.clamp(output[:, :3], 0.0, 1.0)  # RGB値を0-1に制限
+    mask = torch.clamp(output[:, 3:4], 0.0, 1.0)   # マスクを0-1に制限
     invdepth = torch.reciprocal(output[:, 4:] + eps)
-
+    depth = output[:, 4:]
     return render, invdepth, mask
