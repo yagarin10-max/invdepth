@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from train import InverseDepthTrainer
 from utils.warp import warp_with_inverse_depth_mesh
-from utils.camera import compute_relative_transform
 
 def visualize_results(trainer, save_dir='results'):
     """学習結果の可視化"""
@@ -22,6 +21,7 @@ def visualize_results(trainer, save_dir='results'):
         relative_transforms = data['relative_transforms'].to(trainer.device)
         print(K)
         b, c, h, w = ref_image.shape
+        ref_depth = data['ref_depth'].to(trainer.device)
 
         # 座標グリッドの生成
         x_loc, y_loc = torch.meshgrid(
@@ -40,15 +40,28 @@ def visualize_results(trainer, save_dir='results'):
         pred_inverse_depth = pred_inverse_depth.reshape(b, 1, h, w)
         pred_inverse_depth = (pred_inverse_depth + 1) / 2.0
 
+        depth = torch.reciprocal(pred_inverse_depth + 1e-1)
         # 1. Inverse Depthマップの可視化
         plt.figure(figsize=(10, 5))
         plt.subplot(121)
+        # plt.imshow(depth[0, 0].cpu().numpy(), cmap='plasma')
         plt.imshow(pred_inverse_depth[0, 0].cpu().numpy(), cmap='plasma')
         plt.colorbar()
         plt.title('Predicted Inverse Depth Map')
         plt.axis('off')
 
-        # 2. 参照画像の表示
+        # gt_inv = torch.reciprocal(ref_depth + 1e-1)  # [b,h,w,1]
+        # gt_inv = (gt_inv - gt_inv.min()) / (gt_inv.max() - gt_inv.min())
+        # gt_inv = gt_inv.squeeze(0)
+        # # 1. Gt Inverse Depthマップの可視化
+        # gt_depth = torch.reciprocal(gt_inv + 1e-1)
+        # plt.subplot(122)
+        # plt.imshow(gt_depth.cpu().numpy(), cmap='plasma')
+        # # plt.imshow(np.abs(pred_inverse_depth[0, 0].cpu().numpy() - gt_inv.cpu().numpy()), cmap='plasma')
+        # plt.colorbar()
+        # plt.title('Diff of Predicted and GT Inverse Depth Map')
+        # plt.axis('off')
+        # # 2. 参照画像の表示
         plt.subplot(122)
         ref_img_display = ref_image[0].permute(1, 2, 0).cpu().numpy()
         plt.imshow(ref_img_display)
@@ -68,7 +81,8 @@ def visualize_results(trainer, save_dir='results'):
                 pred_inverse_depth,
                 trainer.device,
                 K,
-                relative_transforms[:, i][:,:3,:]
+                relative_transforms[:, i][:,:3,:],
+                ref_depth
             )
 
             # 真値（ソース画像）の表示
@@ -123,7 +137,7 @@ def main():
         'num_epochs': 500,  # テスト用に少なめのエポック数
         'batch_size': 1,
         'num_workers': 0,  # デバッグ時は0にする
-        'num_source_views': 3,
+        'num_source_views': 4,
         'img_height': 256,
         'img_width': 256,
         'focal_length_mm': 55,

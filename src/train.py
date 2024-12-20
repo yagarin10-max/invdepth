@@ -8,7 +8,6 @@ from tqdm import tqdm
 import skimage.metrics
 import os
 from matplotlib import pyplot as plt
-from utils.camera import compute_relative_transform
 from utils.warp import warp_with_inverse_depth_mesh, compute_loss
 from utils.metrics import TVLoss
 from models.siren import SIREN
@@ -93,13 +92,15 @@ class InverseDepthTrainer:
 
             # マルチビューの再構成損失の計算
             total_recon_loss = 0
+            batch_psnr = 0
             for i in range(src_images.size(1)):  # ソース画像の数だけループ
                 pred_img, warp_inv, mask = warp_with_inverse_depth_mesh(
                     ref_image,
                     pred_inverse_depth,
                     self.device,
                     K,
-                    relative_transforms[:, i][:,:3,:]
+                    relative_transforms[:, i][:,:3,:],
+                    ref_depth
                 )
                 recon_loss = compute_loss(
                     pred_img,
@@ -109,10 +110,18 @@ class InverseDepthTrainer:
                     patch_size
                 )
                 total_recon_loss += recon_loss
-
+                # PSNRの計算
+                with torch.no_grad():
+                    psnr = skimage.metrics.peak_signal_noise_ratio(
+                        src_images[:, i].cpu().numpy(),
+                        pred_img.detach().cpu().numpy()
+                    )
+                    batch_psnr += psnr
+                    
+            batch_psnr /= src_images.size(1)
+            psnr_values.append(batch_psnr)
             # Total Variation正則化
             tv_loss = self.tv_loss(pred_inverse_depth)
-            
             # 全体の損失
             loss = total_recon_loss + tv_loss * self.config['tv_weight']
 
@@ -123,13 +132,6 @@ class InverseDepthTrainer:
 
             total_loss += loss.item()
 
-            # PSNRの計算（最初のソース画像に対して）
-            with torch.no_grad():
-                psnr = skimage.metrics.peak_signal_noise_ratio(
-                    src_images[:, 0].cpu().numpy(),
-                    pred_img.detach().cpu().numpy()
-                )
-                psnr_values.append(psnr)
 
         return total_loss / len(self.train_loader), sum(psnr_values) / len(psnr_values)
 

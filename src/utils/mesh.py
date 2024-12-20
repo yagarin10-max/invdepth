@@ -35,8 +35,9 @@ def construct_mesh(
     image: torch.Tensor, 
     invdepth: torch.Tensor, 
     cam_int: torch.Tensor,
+    gt_depth,
     device: torch.device,
-    eps: float = 1e-3
+    eps: float = 1e-1
 ) -> Dict[str, torch.Tensor]:
     """メッシュを構築
     
@@ -59,8 +60,11 @@ def construct_mesh(
     image = image.permute(0, 2, 3, 1)
 
     # デプスの正規化とマスク生成
+    gt_inv = torch.reciprocal(gt_depth + eps)  # [b,h,w,1]
+    gt_inv = (gt_inv - gt_inv.min()) / (gt_inv.max() - gt_inv.min())
+    gt_inv = gt_inv.unsqueeze(0).permute(0, 2, 3, 1)
+    # depth = torch.reciprocal(gt_inv + eps)
     depth = torch.reciprocal(invdepth + eps)
-
     # ピクセル座標の取得と3D投影
     pixel_2d = get_screen_pixel_coord(h, w, device)
     pixel_2d_homo = lift_to_homo(pixel_2d)
@@ -80,7 +84,8 @@ def construct_mesh(
 
     # 頂点属性の計算
     attr_color = image.reshape(b, h * w, 3)
-    attr_mask = get_visible_mask(invdepth).reshape(b, h * w, 1)
+    # attr_mask = get_visible_mask(invdepth).reshape(b, h * w, 1)
+    attr_mask = get_visible_mask(gt_inv).reshape(b, h * w, 1)
     attr = torch.cat([attr_color, attr_mask], dim=-1)
 
     return {
@@ -92,8 +97,8 @@ def construct_mesh(
 
 def get_visible_mask(
     invdepth: torch.Tensor, 
-    beta: float = 10.0, 
-    alpha_threshold: float = 0.3
+    beta: float = 5.0, # 10.0, 
+    alpha_threshold: float = 0.5 # 0.3
 ) -> torch.Tensor:
     """視認可能な領域のマスクを生成
     
