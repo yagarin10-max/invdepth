@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Union, Optional
 import math
 from .base_dataset import BaseMultiViewDataset
 from pytorch3d.renderer import PerspectiveCameras
+from transformers import AutoImageProcessor, AutoModelForDepthEstimation
 
 class MultiViewDepthDataset(BaseMultiViewDataset):
     def __init__(
@@ -55,6 +56,14 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
         # 内部・外部パラメータの設定
         self.K = self._compute_intrinsic_matrix()
         self.camera_params = self.load_camera_params()
+
+        # Initialize Depth Anything V2
+        self.depth_processor = AutoImageProcessor.from_pretrained(
+            "depth-anything/Depth-Anything-V2-Small-hf"
+        )
+        self.depth_model = AutoModelForDepthEstimation.from_pretrained(
+            "depth-anything/Depth-Anything-V2-Small-hf"
+        )
 
     def _compute_intrinsic_matrix(self) -> np.ndarray:
         """カメラの内部パラメータ行列を計算"""
@@ -318,6 +327,23 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
             self.data_root / 'depths' / scene['depth_file']
         )
         
+        inputs = self.depth_processor(
+            images=ref_image, 
+            return_tensors="pt", 
+            do_rescale=True,
+        )
+        # inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        # 深度推定
+        with torch.no_grad():
+            outputs = self.depth_model(**inputs)
+        # 推定された深度を取得
+        post_processed_output = self.depth_processor.post_process_depth_estimation(
+            outputs, 
+            target_sizes=[(self.img_height, self.img_width)]
+        )
+        initial_depth = post_processed_output[0]['predicted_depth']
+        initial_depth = (initial_depth - initial_depth.min()) / (initial_depth.max() - initial_depth.min())
+
         # ソース画像とその変換行列の読み込み
         src_images = []
         src_transforms = []
@@ -347,6 +373,7 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
         data = {
             'ref_image': torch.from_numpy(ref_image).float().permute(2, 0, 1) / 255.0,
             'ref_depth': torch.from_numpy(ref_depth).float(),
+            'initial_depth': initial_depth,
             'src_images': torch.stack([
                 torch.from_numpy(img).float().permute(2, 0, 1) / 255.0 
                 for img in src_images
