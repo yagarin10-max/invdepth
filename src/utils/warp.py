@@ -11,7 +11,7 @@ def warp_with_inverse_depth_mesh(
     device: torch.device,
     K: torch.Tensor,
     RT_ref_to_view: torch.Tensor,
-    gt_depth
+    # gt_depth
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """逆深度マップを用いたメッシュベースの画像ワーピング
     
@@ -35,8 +35,7 @@ def warp_with_inverse_depth_mesh(
         RT_ref_to_view = RT_ref_to_view.unsqueeze(0)
 
     # メッシュの構築とレンダリング
-    # mesh = construct_mesh(image, invdepth, K, device)
-    mesh = construct_mesh(image, invdepth, K, gt_depth, device)
+    mesh = construct_mesh(image, invdepth, K, device)
     warped_image, warped_invdepth, mask = render_mesh(mesh, K, RT_ref_to_view, device)
 
     return warped_image, warped_invdepth, mask

@@ -19,8 +19,8 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
         img_width: int = 256,
         focal_mm: float = 55,
         sensor_width_mm: float = 24,
-        z_min: float = 0.4,
-        z_max: float = 3.5,
+        z_min: float = 0.5,
+        z_max: float = 6.0,
         transform=None
     ):
         """
@@ -173,7 +173,7 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
                 f"[{depth.min()}, {depth.max()}]. Clipping."
             )
         depth = np.clip(depth, self.z_min, self.z_max)
-        depth = (depth - self.z_min) / (self.z_max - self.z_min)
+        # depth = (depth - self.z_min) / (self.z_max - self.z_min)
         
         # リサイズが必要な場合
         if depth.shape != (self.img_height, self.img_width):
@@ -397,7 +397,7 @@ if __name__ == "__main__":
             focal_mm=55,
             sensor_width_mm=24,
             z_min=0.5,
-            z_max=5.0
+            z_max=6.0
         )
         
         print(f"\nSuccessfully created dataset with {len(dataset)} scenes")

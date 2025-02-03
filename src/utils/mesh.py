@@ -35,9 +35,9 @@ def construct_mesh(
     image: torch.Tensor, 
     invdepth: torch.Tensor, 
     cam_int: torch.Tensor,
-    gt_depth,
+    # gt_depth,
     device: torch.device,
-    eps: float = 1e-1
+    eps: float = 1e-4
 ) -> Dict[str, torch.Tensor]:
     """メッシュを構築
     
@@ -58,11 +58,10 @@ def construct_mesh(
     b, c, h, w = image.shape
     invdepth = invdepth.permute(0, 2, 3, 1)
     image = image.permute(0, 2, 3, 1)
-
     # デプスの正規化とマスク生成
-    gt_inv = torch.reciprocal(gt_depth + eps)  # [b,h,w,1]
-    gt_inv = (gt_inv - gt_inv.min()) / (gt_inv.max() - gt_inv.min())
-    gt_inv = gt_inv.unsqueeze(0).permute(0, 2, 3, 1)
+    # gt_inv = torch.reciprocal(gt_depth + eps)  # [b,h,w,1]
+    # gt_inv = (gt_inv - gt_inv.min()) / (gt_inv.max() - gt_inv.min())
+    # gt_inv = gt_inv.unsqueeze(0).permute(0, 2, 3, 1)
     # depth = torch.reciprocal(gt_inv + eps)
     depth = torch.reciprocal(invdepth + eps)
     # ピクセル座標の取得と3D投影
@@ -84,8 +83,8 @@ def construct_mesh(
 
     # 頂点属性の計算
     attr_color = image.reshape(b, h * w, 3)
-    # attr_mask = get_visible_mask(invdepth).reshape(b, h * w, 1)
-    attr_mask = get_visible_mask(gt_inv).reshape(b, h * w, 1)
+    attr_mask = get_visible_mask(invdepth).reshape(b, h * w, 1)
+    # attr_mask = get_visible_mask(gt_inv).reshape(b, h * w, 1)
     attr = torch.cat([attr_color, attr_mask], dim=-1)
 
     return {

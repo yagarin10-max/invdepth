@@ -13,7 +13,7 @@ def render_mesh(
     cam_int: torch.Tensor, 
     cam_ext: torch.Tensor, 
     device: torch.device,
-    eps: float = 1e-1,
+    eps: float = 1e-4,
     near: float = 0.1,
     far: float = 10
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
