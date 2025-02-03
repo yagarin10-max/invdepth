@@ -12,7 +12,7 @@ from utils.warp import warp_with_inverse_depth_mesh, compute_loss
 from utils.metrics import TVLoss
 from models.siren import SIREN
 from datasets.multiview_dataset import MultiViewDepthDataset
-import wandb  # 追加
+import wandb  
 
 class InverseDepthTrainer:
     def __init__(
@@ -249,7 +249,7 @@ if __name__ == "__main__":
         'tv_weight': 15e-3,
         'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints',
         'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results',
-        'run_name': 'inverse-depth-horizon-view20-real'  # W&B実験の名前
+        'run_name': 'inverse-depth-horizon-view10'  # W&B実験の名前
     }
 
     trainer = InverseDepthTrainer(config)

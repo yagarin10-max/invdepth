@@ -81,9 +81,11 @@ class DepthAnythingTrainer:
             b, c, h, w = ref_image.shape
             initial_depth_flat = initial_depth.squeeze().reshape(-1, 1)
             pred_inverse_depth = self.net(initial_depth_flat)
-            pred_inverse_depth = torch.clamp(pred_inverse_depth, -1, 1)
+
+            pred_inverse_depth = torch.sigmoid(pred_inverse_depth)
+            # pred_inverse_depth = torch.clamp(pred_inverse_depth, -1, 1)
             pred_inverse_depth = pred_inverse_depth.reshape(b, 1, h, w)
-            pred_inverse_depth = (pred_inverse_depth + 1) / 2.0
+            # pred_inverse_depth = (pred_inverse_depth + 1) / 2.0
 
             # 損失計算
             batch_recon_loss = 0
@@ -186,9 +188,11 @@ class DepthAnythingTrainer:
 
                     initial_depth_flat = initial_depth.squeeze().reshape(-1, 1)
                     pred_inverse_depth = self.net(initial_depth_flat)
-                    pred_inverse_depth = torch.clamp(pred_inverse_depth, -1, 1)
+
+                    pred_inverse_depth = torch.sigmoid(pred_inverse_depth)
+                    # pred_inverse_depth = torch.clamp(pred_inverse_depth, -1, 1)
                     pred_inverse_depth = pred_inverse_depth.reshape(b, 1, h, w)
-                    pred_inverse_depth = (pred_inverse_depth + 1) / 2.0
+                    # pred_inverse_depth = (pred_inverse_depth + 1) / 2.0
 
                     # 画像をW&Bにログ
                     wandb.log({
@@ -222,7 +226,7 @@ if __name__ == "__main__":
         'patch_size': 1,
         'save_dir': 'checkpoints',
         'results_dir': 'results',
-        'run_name': 'depth-anything-'  # W&B実験の名前
+        'run_name': 'depth-anything-view10'  # W&B実験の名前
     }
 
     trainer = DepthAnythingTrainer(config)

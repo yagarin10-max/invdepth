@@ -44,6 +44,9 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
             img_width=img_width,
             transform=transform
         )
+
+        self.depth_cache = {}
+        self.initial_depth, self.ref_image = self.precompute_depths()
         
         self.focal_mm = focal_mm
         self.sensor_width_mm = sensor_width_mm
@@ -57,13 +60,33 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
         self.K = self._compute_intrinsic_matrix()
         self.camera_params = self.load_camera_params()
 
-        # Initialize Depth Anything V2
+    def precompute_depths(self):
+        """全参照画像の深度を事前計算"""
         self.depth_processor = AutoImageProcessor.from_pretrained(
             "depth-anything/Depth-Anything-V2-Small-hf"
         )
         self.depth_model = AutoModelForDepthEstimation.from_pretrained(
             "depth-anything/Depth-Anything-V2-Small-hf"
         )
+        scene = self.scenes[0]
+        ref_image_name = scene['reference_image']
+        ref_image = self.load_image(self.data_root / 'images' / ref_image_name)
+        
+        # 深度推定
+        with torch.no_grad():
+            inputs = self.depth_processor(
+                images=ref_image, 
+                return_tensors="pt", 
+                do_rescale=True,
+            )
+            outputs = self.depth_model(**inputs)
+            post_processed_output = self.depth_processor.post_process_depth_estimation(
+                outputs, 
+                target_sizes=[(self.img_height, self.img_width)]
+            )
+            initial_depth = post_processed_output[0]['predicted_depth']
+            initial_depth = (initial_depth - initial_depth.min()) / (initial_depth.max() - initial_depth.min())
+        return initial_depth, ref_image
 
     def _compute_intrinsic_matrix(self) -> np.ndarray:
         """カメラの内部パラメータ行列を計算"""
@@ -322,28 +345,11 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
         ref_image_name = scene['reference_image']
         
         # 参照画像とデプスの読み込み
-        ref_image = self.load_image(self.data_root / 'images' / ref_image_name)
+        # ref_image = self.load_image(self.data_root / 'images' / ref_image_name)
         ref_depth = self.load_depth(
             self.data_root / 'depths' / scene['depth_file']
         )
         
-        inputs = self.depth_processor(
-            images=ref_image, 
-            return_tensors="pt", 
-            do_rescale=True,
-        )
-        # inputs = {k: v.to(self.device) for k, v in inputs.items()}
-        # 深度推定
-        with torch.no_grad():
-            outputs = self.depth_model(**inputs)
-        # 推定された深度を取得
-        post_processed_output = self.depth_processor.post_process_depth_estimation(
-            outputs, 
-            target_sizes=[(self.img_height, self.img_width)]
-        )
-        initial_depth = post_processed_output[0]['predicted_depth']
-        initial_depth = (initial_depth - initial_depth.min()) / (initial_depth.max() - initial_depth.min())
-
         # ソース画像とその変換行列の読み込み
         src_images = []
         src_transforms = []
@@ -367,13 +373,13 @@ class MultiViewDepthDataset(BaseMultiViewDataset):
         
         # 参照画像の変換
         if self.transform:
-            ref_image = self.transform(ref_image)
+            self.ref_image = self.transform(self.ref_image)
         
         # numpy配列をtensorに変換
         data = {
-            'ref_image': torch.from_numpy(ref_image).float().permute(2, 0, 1) / 255.0,
+            'ref_image': torch.from_numpy(self.ref_image).float().permute(2, 0, 1) / 255.0,
             'ref_depth': torch.from_numpy(ref_depth).float(),
-            'initial_depth': initial_depth,
+            'initial_depth': self.initial_depth,
             'src_images': torch.stack([
                 torch.from_numpy(img).float().permute(2, 0, 1) / 255.0 
                 for img in src_images
