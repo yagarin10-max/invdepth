@@ -244,10 +244,6 @@ def visualize_results(trainer, save_dir='results', max_views=4):
                 bins=100, range=(0, 1), 
                 alpha=0.5, color='blue', 
                 label='Ground Truth', density=True)
-        plt.hist(initial_depth[0].cpu().numpy().flatten(), 
-                bins=100, range=(0, 1), 
-                alpha=0.5, color='green', 
-                label='Depth Anything V2', density=True)
         plt.hist(pred_inverse_depth[0, 0].cpu().numpy().flatten(), 
                 bins=100, range=(0, 1), 
                 alpha=0.5, color='red', 
@@ -264,7 +260,7 @@ def visualize_results(trainer, save_dir='results', max_views=4):
 def main():
     # 設定
     config = {
-        'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_2/view10_inter2mm',  # データセットのパスを適切に設定
+        'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_8/view30_inter2mm',  # データセットのパスを適切に設定
         'hidden_dim': 256,
         'hidden_layers': 2,
         'learning_rate': 1e-4,
@@ -279,124 +275,124 @@ def main():
         'use_patch_loss': False,
         'patch_size': 1,
         'tv_weight': 15e-3,
-        'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_2/view10_inter2mm',
-        'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s2_v10_e3000'
+        'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_8/view30_inter2mm',
+        'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s8_v30_e3000_1'
     }
-    config1 = {
-        'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_3/view10_inter2mm',  # データセットのパスを適切に設定
-        'hidden_dim': 256,
-        'hidden_layers': 2,
-        'learning_rate': 1e-4,
-        'num_epochs': 3000,  # テスト用に少なめのエポック数
-        'batch_size': 1,
-        'num_workers': 0,  # デバッグ時は0にする
-        'num_source_views': 30,
-        'img_height': 256,
-        'img_width': 256,
-        'focal_length_mm': 55,
-        'sensor_width_mm': 24,
-        'use_patch_loss': False,
-        'patch_size': 1,
-        'tv_weight': 15e-3,
-        'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_3/view10_inter2mm',
-        'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s3_v10_e3000'
-    }
-    config2 = {
-        'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_4/view10_inter2mm',  # データセットのパスを適切に設定
-        'hidden_dim': 256,
-        'hidden_layers': 2,
-        'learning_rate': 1e-4,
-        'num_epochs': 3000,  # テスト用に少なめのエポック数
-        'batch_size': 1,
-        'num_workers': 0,  # デバッグ時は0にする
-        'num_source_views': 30,
-        'img_height': 256,
-        'img_width': 256,
-        'focal_length_mm': 55,
-        'sensor_width_mm': 24,
-        'use_patch_loss': False,
-        'patch_size': 1,
-        'tv_weight': 15e-3,
-        'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_4/view10_inter2mm',
-        'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s4_v10_e3000'
-    }
-    config3 = {
-        'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_5/view10_inter2mm',  # データセットのパスを適切に設定
-        'hidden_dim': 256,
-        'hidden_layers': 2,
-        'learning_rate': 1e-4,
-        'num_epochs': 3000,  # テスト用に少なめのエポック数
-        'batch_size': 1,
-        'num_workers': 0,  # デバッグ時は0にする
-        'num_source_views': 30,
-        'img_height': 256,
-        'img_width': 256,
-        'focal_length_mm': 55,
-        'sensor_width_mm': 24,
-        'use_patch_loss': False,
-        'patch_size': 1,
-        'tv_weight': 15e-3,
-        'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_5/view10_inter2mm',
-        'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s5_v10_e3000'
-    }
-    config4 = {
-        'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_6/view10_inter2mm',  # データセットのパスを適切に設定
-        'hidden_dim': 256,
-        'hidden_layers': 2,
-        'learning_rate': 1e-4,
-        'num_epochs': 3000,  # テスト用に少なめのエポック数
-        'batch_size': 1,
-        'num_workers': 0,  # デバッグ時は0にする
-        'num_source_views': 30,
-        'img_height': 256,
-        'img_width': 256,
-        'focal_length_mm': 55,
-        'sensor_width_mm': 24,
-        'use_patch_loss': False,
-        'patch_size': 1,
-        'tv_weight': 15e-3,
-        'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_6/view10_inter2mm',
-        'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s6_v10_e3000'
-    }
-    config5 = {
-        'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_7/view10_inter2mm',  # データセットのパスを適切に設定
-        'hidden_dim': 256,
-        'hidden_layers': 2,
-        'learning_rate': 1e-4,
-        'num_epochs': 3000,  # テスト用に少なめのエポック数
-        'batch_size': 1,
-        'num_workers': 0,  # デバッグ時は0にする
-        'num_source_views': 30,
-        'img_height': 256,
-        'img_width': 256,
-        'focal_length_mm': 55,
-        'sensor_width_mm': 24,
-        'use_patch_loss': False,
-        'patch_size': 1,
-        'tv_weight': 15e-3,
-        'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_7/view10_inter2mm',
-        'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s7_v10_e3000'
-    }
-    config6 = {
-        'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_8/view10_inter2mm',  # データセットのパスを適切に設定
-        'hidden_dim': 256,
-        'hidden_layers': 2,
-        'learning_rate': 1e-4,
-        'num_epochs': 3000,  # テスト用に少なめのエポック数
-        'batch_size': 1,
-        'num_workers': 0,  # デバッグ時は0にする
-        'num_source_views': 30,
-        'img_height': 256,
-        'img_width': 256,
-        'focal_length_mm': 55,
-        'sensor_width_mm': 24,
-        'use_patch_loss': False,
-        'patch_size': 1,
-        'tv_weight': 15e-3,
-        'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_8/view10_inter2mm',
-        'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s8_v10_e3000'
-    }
-    configs = [config, config1, config2, config3, config4, config5, config6]
+    # config1 = {
+    #     'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_3/view10_inter6mm',  # データセットのパスを適切に設定
+    #     'hidden_dim': 256,
+    #     'hidden_layers': 2,
+    #     'learning_rate': 1e-4,
+    #     'num_epochs': 3000,  # テスト用に少なめのエポック数
+    #     'batch_size': 1,
+    #     'num_workers': 0,  # デバッグ時は0にする
+    #     'num_source_views': 10,
+    #     'img_height': 256,
+    #     'img_width': 256,
+    #     'focal_length_mm': 55,
+    #     'sensor_width_mm': 24,
+    #     'use_patch_loss': False,
+    #     'patch_size': 1,
+    #     'tv_weight': 15e-3,
+    #     'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_3/view10_inter6mm',
+    #     'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s3_v10_e3000'
+    # }
+    # config2 = {
+    #     'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_4/view10_inter6mm',  # データセットのパスを適切に設定
+    #     'hidden_dim': 256,
+    #     'hidden_layers': 2,
+    #     'learning_rate': 1e-4,
+    #     'num_epochs': 3000,  # テスト用に少なめのエポック数
+    #     'batch_size': 1,
+    #     'num_workers': 0,  # デバッグ時は0にする
+    #     'num_source_views': 10,
+    #     'img_height': 256,
+    #     'img_width': 256,
+    #     'focal_length_mm': 55,
+    #     'sensor_width_mm': 24,
+    #     'use_patch_loss': False,
+    #     'patch_size': 1,
+    #     'tv_weight': 15e-3,
+    #     'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_4/view10_inter6mm',
+    #     'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s4_v10_e3000'
+    # }
+    # config3 = {
+    #     'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_5/view10_inter6mm',  # データセットのパスを適切に設定
+    #     'hidden_dim': 256,
+    #     'hidden_layers': 2,
+    #     'learning_rate': 1e-4,
+    #     'num_epochs': 3000,  # テスト用に少なめのエポック数
+    #     'batch_size': 1,
+    #     'num_workers': 0,  # デバッグ時は0にする
+    #     'num_source_views': 10,
+    #     'img_height': 256,
+    #     'img_width': 256,
+    #     'focal_length_mm': 55,
+    #     'sensor_width_mm': 24,
+    #     'use_patch_loss': False,
+    #     'patch_size': 1,
+    #     'tv_weight': 15e-3,
+    #     'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_5/view10_inter6mm',
+    #     'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s5_v10_e3000'
+    # }
+    # config4 = {
+    #     'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_6/view10_inter6mm',  # データセットのパスを適切に設定
+    #     'hidden_dim': 256,
+    #     'hidden_layers': 2,
+    #     'learning_rate': 1e-4,
+    #     'num_epochs': 3000,  # テスト用に少なめのエポック数
+    #     'batch_size': 1,
+    #     'num_workers': 0,  # デバッグ時は0にする
+    #     'num_source_views': 10,
+    #     'img_height': 256,
+    #     'img_width': 256,
+    #     'focal_length_mm': 55,
+    #     'sensor_width_mm': 24,
+    #     'use_patch_loss': False,
+    #     'patch_size': 1,
+    #     'tv_weight': 15e-3,
+    #     'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_6/view10_inter6mm',
+    #     'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s6_v10_e3000'
+    # }
+    # config5 = {
+    #     'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_7/view10_inter6mm',  # データセットのパスを適切に設定
+    #     'hidden_dim': 256,
+    #     'hidden_layers': 2,
+    #     'learning_rate': 1e-4,
+    #     'num_epochs': 3000,  # テスト用に少なめのエポック数
+    #     'batch_size': 1,
+    #     'num_workers': 0,  # デバッグ時は0にする
+    #     'num_source_views': 10,
+    #     'img_height': 256,
+    #     'img_width': 256,
+    #     'focal_length_mm': 55,
+    #     'sensor_width_mm': 24,
+    #     'use_patch_loss': False,
+    #     'patch_size': 1,
+    #     'tv_weight': 15e-3,
+    #     'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_7/view10_inter6mm',
+    #     'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s7_v10_e3000'
+    # }
+    # config6 = {
+    #     'data_root': '/home/rintoyagawa/ssd2/Code/invdepth/temp_datas/horizon_8/view10_inter6mm',  # データセットのパスを適切に設定
+    #     'hidden_dim': 256,
+    #     'hidden_layers': 2,
+    #     'learning_rate': 1e-4,
+    #     'num_epochs': 3000,  # テスト用に少なめのエポック数
+    #     'batch_size': 1,
+    #     'num_workers': 0,  # デバッグ時は0にする
+    #     'num_source_views': 10,
+    #     'img_height': 256,
+    #     'img_width': 256,
+    #     'focal_length_mm': 55,
+    #     'sensor_width_mm': 24,
+    #     'use_patch_loss': False,
+    #     'patch_size': 1,
+    #     'tv_weight': 15e-3,
+    #     'save_dir': '/home/rintoyagawa/ssd2/Code/invdepth/checkpoints/horizon_8/view10_inter6mm',
+    #     'results_dir': '/home/rintoyagawa/ssd2/Code/invdepth/results/horizon/s8_v10_e3000'
+    # }
+    configs = [config]
     
     for config in configs:
         trainer = InverseDepthTrainer(config)

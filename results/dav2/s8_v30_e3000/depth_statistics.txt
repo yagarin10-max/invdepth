@@ -1,0 +1,21 @@
+
+Ground Truth Statistics:
+Mean: 0.5556
+Std: 0.2456
+Min: 0.0625
+Max: 0.9730
+Median: 0.5402
+
+Depth Anything V2 Statistics:
+Mean: 0.5051
+Std: 0.2672
+Min: 0.0000
+Max: 1.0000
+Median: 0.4750
+
+Updated Statistics:
+Mean: 0.5980
+Std: 0.1878
+Min: 0.3196
+Max: 0.9349
+Median: 0.5771

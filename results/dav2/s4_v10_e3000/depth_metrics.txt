@@ -1,0 +1,6 @@
+mae: 0.4804
+rmse: 0.5760
+scale_inv: 1.5449
+delta1: 0.3335
+delta2: 0.3790
+delta3: 0.4068
